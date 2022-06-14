@@ -1,0 +1,3 @@
+*.idea/
+.pyre/
+__pycache__/

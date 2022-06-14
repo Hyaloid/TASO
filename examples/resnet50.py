@@ -1,4 +1,5 @@
 import taso as ts
+import onnx
 
 def resnet_block(graph, input, strides, out_channels):
     w1 = graph.new_weight(dims=(out_channels,input.dim(1),1,1))
@@ -38,5 +39,6 @@ for i in range(3):
     strides = (1,1)
 
 new_graph = ts.optimize(graph, alpha=1.0, budget=1000)
-#onnx_model = ts.export_onnx(new_graph)
+onnx_model = ts.export_onnx(new_graph)
+onnx.save_model(onnx_model, "../onnx_graph/resnet.onnx")
 

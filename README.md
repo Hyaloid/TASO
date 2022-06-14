@@ -16,7 +16,7 @@ We also provide prebuilt [docker images](https://github.com/jiazhihao/TASO/blob/
 
 ## Use TASO
 
-TASO can directly optimize any pre-trained DNN models in [ONNX](https://onnx.ai), [TensorFlow](https://www.tensorflow.org/guide/saved_model), and [PyTorch](https://pytorch.org/docs/stable/onnx.html) graph formats.
+TASO can directly optimize any pre-trained DNN models in [ONNX](https://onnx.ai), [TensorFlow](https://www.tensorflow.org/guide/saved_model) (tensorflow_version < 2.0), and [PyTorch](https://pytorch.org/docs/stable/onnx.html) graph formats.
 TASO also provides a Python interface for optimizing arbitrary DNN architectures.
 TASO supports exporting the optimized computation graphs to ONNX, which can be directly used as inputs by most existing deep learning frameworks.
 
