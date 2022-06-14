@@ -33,7 +33,7 @@ parser.add_argument("--iterations", help="How many iterations to average for tim
 parser.add_argument("--discard_iter", help="How many iterations to not time during warm up (default 1000)", type=int, default=1000)
 args = parser.parse_args()
 
-input = tf.placeholder(tf.float32, shape=(64,1024))
+input = tf.compat.v1.placeholder(tf.float32, shape=(64,1024))
 input_dictionary = {}
 input_dictionary[input] = np.random.random_sample((64, 1024))
 t = input
@@ -42,17 +42,17 @@ for i in range(12):
 
 output_nodes = [t]
 
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 if (args.xla):
     print("Measuring inference performance with XLA ON")
-    config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
+    config.graph_options.optimizer_options.global_jit_level = tf.compat.v1.OptimizerOptions.ON_1
 else:
     print("Measuring inference performance with XLA OFF")
 print(config.graph_options.optimizer_options.global_jit_level)
 
-with tf.Session(config=config) as sess:
+with tf.compat.v1.Session(config=config) as sess:
     if (args.print_tensorboard):
-        writer = tf.summary.FileWriter(args.print_tensorboard, sess.graph)
+        writer = tf.compat.v1.summary.FileWriter(args.print_tensorboard, sess.graph)
     times = []
     for i in range(args.discard_iter + args.iterations):
         t0 = time.time()
