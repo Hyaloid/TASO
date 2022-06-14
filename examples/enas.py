@@ -1,8 +1,9 @@
 import argparse
-import taso as ts
+import python.taso as ts
 import onnx
 
 NUM_LAYERS = 12
+
 
 def create_layer_weights(graph, num_layers, channels):
     """Instantiates weights for each layer.
@@ -19,9 +20,9 @@ def create_layer_weights(graph, num_layers, channels):
     for i in range(num_layers):
         w = []
         # conv_3x3
-        w.append(graph.new_weight(dims=(channels, channels, 3, 3))) # conv_3x3
+        w.append(graph.new_weight(dims=(channels, channels, 3, 3)))  # conv_3x3
         # conv_5x5
-        w.append(graph.new_weight(dims=(channels, channels, 5, 5))) # conv_5x5
+        w.append(graph.new_weight(dims=(channels, channels, 5, 5)))  # conv_5x5
         # separable conv_3x3
         w.append(graph.new_weight(dims=(channels, 1, 3, 3)))
         w.append(graph.new_weight(dims=(channels, 1, 3, 3)))
@@ -32,9 +33,11 @@ def create_layer_weights(graph, num_layers, channels):
         all_w.append(w)
     return all_w
 
+
 def get_dims(t):
     """Returns the size of a tensor."""
     return tuple([t.dim(i) for i in range(4)])
+
 
 def add_skips(graph, layers, skips):
     """Adds the output from the specified skip connections.
@@ -64,14 +67,15 @@ def add_skips(graph, layers, skips):
             if size > min_size:
                 kernel_size = size[-1] - 2 * (min_size[-1] - 1)
                 t = graph.add(
-                        graph.avgpool2d(input=layers[i],
-                                        kernels=[kernel_size, kernel_size],
-                                        strides=[2, 2],
-                                        padding="VALID"),
-                        t)
+                    graph.avgpool2d(input=layers[i],
+                                    kernels=[kernel_size, kernel_size],
+                                    strides=[2, 2],
+                                    padding="VALID"),
+                    t)
             else:
                 t = graph.add(layers[i], t)
     return t
+
 
 def separable_conv(graph, input, all_w, kernel_dim, layer_id):
     """Defines a separable convolution.
@@ -96,7 +100,8 @@ def separable_conv(graph, input, all_w, kernel_dim, layer_id):
     t = graph.conv2d(input=input, weight=conv_w[0], strides=(1, 1),
                      padding="SAME", activation="RELU")
     return graph.conv2d(input=t, weight=conv_w[1], strides=(1, 1),
-                            padding="SAME", activation="RELU")
+                        padding="SAME", activation="RELU")
+
 
 def create_architecture(arc, graph, input, all_w):
     """Creates an architecture with shared weights.
@@ -123,22 +128,23 @@ def create_architecture(arc, graph, input, all_w):
         if i > 0:
             t = add_skips(graph, y, spec[1:])
         if spec[0] == 0:
-           t = graph.conv2d(input=t, weight=all_w[i][0], strides=(1, 1),
-                            padding="SAME", activation="RELU")
+            t = graph.conv2d(input=t, weight=all_w[i][0], strides=(1, 1),
+                             padding="SAME", activation="RELU")
         elif spec[0] == 1:
-           t = separable_conv(graph, t, all_w, kernel_dim=3, layer_id=i)
+            t = separable_conv(graph, t, all_w, kernel_dim=3, layer_id=i)
         elif spec[0] == 2:
-           t = graph.conv2d(input=t, weight=all_w[i][1], strides=(1, 1),
-                            padding="SAME", activation="RELU")
+            t = graph.conv2d(input=t, weight=all_w[i][1], strides=(1, 1),
+                             padding="SAME", activation="RELU")
         elif spec[0] == 3:
-           t = separable_conv(graph, t, all_w, kernel_dim=5, layer_id=i)
+            t = separable_conv(graph, t, all_w, kernel_dim=5, layer_id=i)
         elif spec[0] == 4:
-           t = graph.avgpool2d(input=t, kernels=[3, 3], strides=[2, 2],
-                               padding="SAME", activation="NONE")
+            t = graph.avgpool2d(input=t, kernels=[3, 3], strides=[2, 2],
+                                padding="SAME", activation="NONE")
         elif spec[0] == 5:
-           t = graph.maxpool2d(input=t, kernels=[3, 3], strides=[2, 2],
-                               padding="SAME", activation="NONE")
+            t = graph.maxpool2d(input=t, kernels=[3, 3], strides=[2, 2],
+                                padding="SAME", activation="NONE")
         y.append(t)
+
 
 def parse_arcs(input_file):
     """Extracts the architecture string representations from an input file."""
@@ -147,6 +153,7 @@ def parse_arcs(input_file):
         for line in f:
             arcs.append(line.strip())
     return arcs
+
 
 def main(args):
     graph = ts.new_graph()
@@ -175,7 +182,8 @@ def main(args):
         onnx_model = ts.export_onnx(new_graph)
         onnx.save(onnx_model, 'optimized_model.onnx')
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Runs architectures sampled by the ENAS algorithm in TASO')
     parser.add_argument('--input_file', type=str,

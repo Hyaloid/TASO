@@ -1,5 +1,6 @@
 import taso
 
+
 def get_pads(kernel, padding):
     if sum(padding) == 0 and sum(kernel) > 2:
         pads = "VALID"
@@ -7,10 +8,12 @@ def get_pads(kernel, padding):
         pads = "SAME"
     return pads
 
+
 def conv2d(graph, v, out_channels, kernel=(1, 1), stride=(1, 1), padding=(0, 0)):
     w = graph.new_weight(dims=(out_channels, v.dim(1), *kernel))
     v = graph.conv2d(input=v, weight=w, strides=stride, padding=get_pads(kernel, padding), activation="RELU")
     return v
+
 
 def pool2d(graph, v, pool_type, kernel=(1, 1), stride=(1, 1), padding=(0, 0)):
     if pool_type == 'global_avg':
@@ -25,7 +28,7 @@ def pool2d(graph, v, pool_type, kernel=(1, 1), stride=(1, 1), padding=(0, 0)):
     else:
         raise NotImplemented
     return x
-        
+
 
 def inception_front(graph, v):  # 3 x 299 x 299
     v = conv2d(graph, v, out_channels=32, kernel=(3, 3), stride=(2, 2))  # 32 x 149 x 149
@@ -134,6 +137,7 @@ def inception_v3(batch_size=1):
     v = inception_e(graph, v)
     v = inception_logits(graph, v)
     return graph
+
 
 graph = inception_v3(batch_size=32)  # change batch_size from 4 to 8 would cause error.
 opt_graph = taso.optimize(graph, alpha=1.0, budget=30)

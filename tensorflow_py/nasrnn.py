@@ -7,10 +7,12 @@ from shared_functions import make_matmul
 hidden_size = 512
 length = 5
 
+
 def combine(x, h):
     w1 = make_matmul(x, hidden_size)
     w2 = make_matmul(h, hidden_size)
     return tf.add(tf.nn.relu(w1), tf.nn.relu(w2))
+
 
 def nas_node(input, x):
     t = list()
@@ -26,11 +28,14 @@ def nas_node(input, x):
     midt.append(tf.multiply(tf.nn.tanh(midt[4]), tf.nn.tanh(midt[5])))
     return tf.nn.tanh(midt[6])
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--xla", help="Whether to run with TensorFlowXLA optimizations", action="store_true")
 parser.add_argument("--print_tensorboard", help="Name of folder to output the tensorboard information")
-parser.add_argument("--iterations", help="How many iterations to average for timing (default 5000)", type=int, default=1000)
-parser.add_argument("--discard_iter", help="How many iterations to not time during warm up (default 1000)", type=int, default=1000)
+parser.add_argument("--iterations", help="How many iterations to average for timing (default 5000)", type=int,
+                    default=1000)
+parser.add_argument("--discard_iter", help="How many iterations to not time during warm up (default 1000)", type=int,
+                    default=1000)
 args = parser.parse_args()
 
 input_dictionary = {}

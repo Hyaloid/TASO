@@ -1,8 +1,9 @@
-import taso as ts
+import python.taso as ts
 
 seq_length = 64
 hidden_dims = 1024
 batch_size = 16
+
 
 def attention(graph, input, heads):
     d_model = input.dim(1)
@@ -16,24 +17,25 @@ def attention(graph, input, heads):
     k = graph.matmul(input, weights[1])
     v = graph.matmul(input, weights[2])
     # reshape query, key, value to multiple heads
-    q = graph.reshape(q, shape=(batch_size, 64,16,64))
-    k = graph.reshape(k, shape=(batch_size, 64,16,64))
-    v = graph.reshape(v, shape=(batch_size, 64,16,64))
+    q = graph.reshape(q, shape=(batch_size, 64, 16, 64))
+    k = graph.reshape(k, shape=(batch_size, 64, 16, 64))
+    v = graph.reshape(v, shape=(batch_size, 64, 16, 64))
     # transpose query, key, value for batched matmul
-    q = graph.transpose(q, perm=(0,2,1,3), shuffle=True)
-    k = graph.transpose(k, perm=(0,2,1,3), shuffle=True)
-    v = graph.transpose(v, perm=(0,2,1,3), shuffle=True)
+    q = graph.transpose(q, perm=(0, 2, 1, 3), shuffle=True)
+    k = graph.transpose(k, perm=(0, 2, 1, 3), shuffle=True)
+    v = graph.transpose(v, perm=(0, 2, 1, 3), shuffle=True)
     # perform matrix multiplications
     logits = graph.matmul(q, k)
     output = graph.matmul(logits, v)
     # transpose the output back
-    output = graph.transpose(output,perm=(0,2,1,3), shuffle=True)
+    output = graph.transpose(output, perm=(0, 2, 1, 3), shuffle=True)
     output = graph.reshape(output, shape=(batch_size * 64, 1024))
 
     # a final linear layer
     linear = graph.new_weight(dims=(d_model, d_model))
     output = graph.matmul(input, linear)
     return output
+
 
 graph = ts.new_graph()
 input = graph.new_input(dims=(batch_size * seq_length, hidden_dims))

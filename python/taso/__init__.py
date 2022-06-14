@@ -2,9 +2,11 @@ from .core import *
 import onnx
 from onnx import helper, TensorProto, numpy_helper
 
+
 class InputNotFoundError(Exception):
     """Raised when cannot find input tensors """
     pass
+
 
 # correspond to https://github.com/onnx/onnx/blob/master/onnx/onnx.proto
 def onnx_datatype_tostring(dtype):
@@ -45,9 +47,11 @@ def onnx_datatype_tostring(dtype):
     else:
         raise Exception('Unknown onnx datatype')
 
+
 def _check_output(taso_output, onnx_output):
     # TODO: check output match
     return True
+
 
 def _parse_attribute(attributes):
     atts = dict()
@@ -66,17 +70,18 @@ def _parse_attribute(attributes):
             assert False, "Unsupported Attribute Type: {}".format(att.type)
     return atts
 
+
 def _get_conv_pool_pads_attr(attrs):
     if ("auto_pad" in attrs):
         padding = attrs["auto_pad"]
         if isinstance(padding, bytes):
             padding = padding.decode()
-        if (padding=='SAME_LOWER') or (padding=='SAME_UPPER'):
+        if (padding == 'SAME_LOWER') or (padding == 'SAME_UPPER'):
             pads = "SAME"
-        elif (padding=='VALID'):
+        elif (padding == 'VALID'):
             pads = "VALID"
         else:
-            assert padding=='NOTSET', "Unrecogonized auto_pad value: {}".format(padding)
+            assert padding == 'NOTSET', "Unrecogonized auto_pad value: {}".format(padding)
         # Note that we always think conv1x1 has SAME padding
         # This will allow fusing enlarged convs
         if sum(attrs['kernel_shape']) <= 2:
@@ -85,7 +90,7 @@ def _get_conv_pool_pads_attr(attrs):
             return pads
     # Assume zero padding if the pads are missing
     if "pads" not in attrs:
-        attrs['pads'] = [0 for i in range(len(attrs['kernel_shape'])*2)]
+        attrs['pads'] = [0 for i in range(len(attrs['kernel_shape']) * 2)]
     # Note that we always think conv1x1 has SAME padding
     # This will allow fusing enlarged convs
     if sum(attrs["pads"]) == 0 and sum(attrs['kernel_shape']) > 2:
@@ -93,6 +98,7 @@ def _get_conv_pool_pads_attr(attrs):
     else:
         pads = "SAME"
     return pads
+
 
 def _get_list_from_initializer(initializer, name):
     for data in initializer:
@@ -104,10 +110,11 @@ def _get_list_from_initializer(initializer, name):
             elif data.raw_data and data.raw_data != []:
                 ret_in_array = numpy_helper.to_array(data)
                 for dim in ret_in_array:
-                        ret.append(dim)
+                    ret.append(dim)
             return ret
     raise InputNotFoundError
     return []
+
 
 def _get_inputs(op, graph, tensors, initializer):
     inputs = list()
@@ -127,10 +134,12 @@ def _get_inputs(op, graph, tensors, initializer):
         inputs.append(input_tensor)
     return inputs
 
+
 def _add(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     outputs = graph.add(inputs[0], inputs[1])
     return outputs
+
 
 def _argmax(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -142,6 +151,7 @@ def _argmax(op, graph, tensors, initializer):
     outputs = graph.reduce_argmax(input=inputs[0], axes=tuple(axes_list), keepdims=keepdims)
     return outputs
 
+
 def _argmin(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "ArgMin requires exactly one input"
@@ -151,6 +161,7 @@ def _argmin(op, graph, tensors, initializer):
     axes_list = [axis]
     outputs = graph.reduce_argmin(input=inputs[0], axes=tuple(axes_list), keepdims=keepdims)
     return outputs
+
 
 def _batchnorm(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -162,23 +173,25 @@ def _batchnorm(op, graph, tensors, initializer):
     outputs = graph.batchnorm(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], epsilon)
     return outputs
 
+
 def _cast(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
-    #assert len(op.input) == 1, "Cast requires exactly one input"
-    #input_tensor = None
-    #if op.input[0] in tensors:
+    # assert len(op.input) == 1, "Cast requires exactly one input"
+    # input_tensor = None
+    # if op.input[0] in tensors:
     #    input_tensor = tensors[op.input[0]]
-    #else:
+    # else:
     #    for init in initializer:
     #        if init.name == op.input[0]:
     #            input_tensor = graph.new_weight(
     #                dims=tuple(list(init.dims)), data=numpy_helper.to_array(init))
     #            break
-    #assert input_tensor is not None, "Input Tensor Not Found"
+    # assert input_tensor is not None, "Input Tensor Not Found"
     attrs = _parse_attribute(op.attribute)
     to_type = onnx_datatype_tostring(attrs["to"])
     outputs = graph.cast(input=inputs[0], datatype=to_type)
     return outputs
+
 
 def _ceil(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -187,12 +200,14 @@ def _ceil(op, graph, tensors, initializer):
     outputs = graph.ceil(inputs[0])
     return outputs
 
+
 def _concat(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     attrs = _parse_attribute(op.attribute)
     axis = attrs["axis"]
     outputs = graph.concat(axis, inputs)
     return outputs
+
 
 def _constant(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -207,11 +222,12 @@ def _constant(op, graph, tensors, initializer):
     outputs = graph.new_weight(dims=tuple(dims), data=weight_data)
     return outputs
 
+
 def _conv2d(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     attrs = _parse_attribute(op.attribute)
     if "group" not in attrs:
-        group = 1 # default 1
+        group = 1  # default 1
     else:
         group = attrs["group"]
     pads = _get_conv_pool_pads_attr(attrs)
@@ -223,11 +239,13 @@ def _conv2d(op, graph, tensors, initializer):
         outputs = graph.add(outputs, reshaped_bias)
     return outputs
 
+
 def _div(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 2, "Div takes exactly two inputs"
     outputs = graph.div(x=inputs[0], y=inputs[1])
     return outputs
+
 
 def _dropout(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -237,11 +255,13 @@ def _dropout(op, graph, tensors, initializer):
     outputs = graph.dropout(input=inputs[0], rate=rate)
     return outputs
 
+
 def _equal(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 2, "Equal takes exactly two inputs"
     outputs = graph.equal(x=inputs[0], y=inputs[1])
     return outputs
+
 
 def _exp(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -249,6 +269,7 @@ def _exp(op, graph, tensors, initializer):
     attrs = _parse_attribute(op.attribute)
     outputs = graph.exp(input=inputs[0])
     return outputs
+
 
 def _flatten(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -262,17 +283,19 @@ def _flatten(op, graph, tensors, initializer):
     outputs = graph.reshape(inputs[0], tuple(shape))
     return outputs
 
+
 def _gemm(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     attrs = _parse_attribute(op.attribute)
     if "transA" in attrs and attrs["transA"] == 1:
-        inputs[0] = graph.transpose(inputs[0], (1,0), shuffle=True)
+        inputs[0] = graph.transpose(inputs[0], (1, 0), shuffle=True)
     if "transB" in attrs and attrs["transB"] == 1:
-        inputs[1] = graph.transpose(inputs[1], (1,0), shuffle=True)
+        inputs[1] = graph.transpose(inputs[1], (1, 0), shuffle=True)
     outputs = graph.matmul(inputs[0], inputs[1])
     if len(inputs) > 2:
         outputs = graph.add(outputs, inputs[2])
     return outputs
+
 
 def _greater(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -280,11 +303,13 @@ def _greater(op, graph, tensors, initializer):
     outputs = graph.greater(inputs[0], inputs[1])
     return outputs
 
+
 def _identity(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "Identity takes exactly one input"
     outputs = graph.dropout(inputs[0], 0.0)
     return outputs
+
 
 def _leakyrelu(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -294,28 +319,31 @@ def _leakyrelu(op, graph, tensors, initializer):
     outputs = graph.leakyrelu(input=inputs[0], alpha=alpha)
     return outputs
 
+
 def _less(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 2, "Less takes exactly two inputs"
     outputs = graph.less(inputs[0], inputs[1])
     return outputs
 
+
 def _log(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "Log requires exactly one input"
-    #input_tensor = None
-    #if op.input[0] in tensors:
+    # input_tensor = None
+    # if op.input[0] in tensors:
     #    input_tensor = tensors[op.input[0]]
-    #else:
+    # else:
     #    for init in initializer:
     #        if init.name == op.input[0]:
     #            input_tensor = graph.new_weight(
     #                dims=tuple(list(init.dims)), data=numpy_helper.to_array(init))
     #            break
-    #assert input_tensor is not None, "Input Tensor Not Found"
+    # assert input_tensor is not None, "Input Tensor Not Found"
     attrs = _parse_attribute(op.attribute)
     outputs = graph.log(input=inputs[0])
     return outputs
+
 
 def _logical_not(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -324,11 +352,13 @@ def _logical_not(op, graph, tensors, initializer):
     outputs = graph.logical_not(input=inputs[0])
     return outputs
 
+
 def _matmul(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 2, "MatMul takes exactly two inputs"
     outputs = graph.matmul(inputs[0], inputs[1])
     return outputs
+
 
 def _min(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -336,11 +366,13 @@ def _min(op, graph, tensors, initializer):
     outputs = graph.min(inputs[0], inputs[1])
     return outputs
 
+
 def _mul(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 2, "Mul takes exactly two inputs"
     outputs = graph.mul(inputs[0], inputs[1])
     return outputs
+
 
 def _pad(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -348,8 +380,9 @@ def _pad(op, graph, tensors, initializer):
     # TODO: use the shape information from the ONNX runtime to
     # calculate the exact output shape
     # Currently treat pad as a no op
-    #assert sum(attrs['pads']) == 0
+    # assert sum(attrs['pads']) == 0
     return inputs[0]
+
 
 def _prelu(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -358,11 +391,13 @@ def _prelu(op, graph, tensors, initializer):
     outputs = graph.prelu(x=inputs[0], slope=inputs[1])
     return outputs
 
+
 def _max(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 2, "Max takes exactly two inputs"
     outputs = graph.max(inputs[0], inputs[1])
     return outputs
+
 
 def _maxpool2d(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -374,6 +409,7 @@ def _maxpool2d(op, graph, tensors, initializer):
     outputs = graph.maxpool2d(input=inputs[0], kernels=kernels, strides=strides, padding=pads)
     return outputs
 
+
 def _avgpool2d(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "AvgPool2D requires exactly one input"
@@ -384,15 +420,17 @@ def _avgpool2d(op, graph, tensors, initializer):
     outputs = graph.avgpool2d(input=inputs[0], kernels=kernels, strides=strides, padding=pads)
     return outputs
 
+
 def _globalavgpool2d(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "GlobalAvgPool2D requires exactly one input"
-    dim = inputs[0].dim(inputs[0].nDim-1)
+    dim = inputs[0].dim(inputs[0].nDim - 1)
     kernels = [dim, dim]
     strides = [1, 1]
     pads = "VALID"
     outputs = graph.avgpool2d(input=inputs[0], kernels=kernels, strides=strides, padding=pads)
     return outputs
+
 
 def _reducemax(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -406,6 +444,7 @@ def _reducemax(op, graph, tensors, initializer):
     outputs = graph.reduce_max(input=inputs[0], axes=tuple(axes_list), keepdims=keepdims)
     return outputs
 
+
 def _reducemean(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "ReduceMean requires exactly one input"
@@ -417,6 +456,7 @@ def _reducemean(op, graph, tensors, initializer):
         axes_list.append(i)
     outputs = graph.reduce_mean(input=inputs[0], axes=tuple(axes_list), keepdims=keepdims)
     return outputs
+
 
 def _reducemin(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -430,6 +470,7 @@ def _reducemin(op, graph, tensors, initializer):
     outputs = graph.reduce_min(input=inputs[0], axes=tuple(axes_list), keepdims=keepdims)
     return outputs
 
+
 def _reduceprod(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "ReduceProd requires exactly one input"
@@ -442,6 +483,7 @@ def _reduceprod(op, graph, tensors, initializer):
     outputs = graph.reduce_prod(input=inputs[0], axes=tuple(axes_list), keepdims=keepdims)
     return outputs
 
+
 def _reducesum(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "ReduceSum requires exactly one input"
@@ -453,6 +495,7 @@ def _reducesum(op, graph, tensors, initializer):
         axes_list.append(i)
     outputs = graph.reduce_sum(input=inputs[0], axes=tuple(axes_list), keepdims=keepdims)
     return outputs
+
 
 def _reshape(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -471,11 +514,13 @@ def _reshape(op, graph, tensors, initializer):
     outputs = graph.reshape(inputs[0], tuple(shape))
     return outputs
 
+
 def _resize(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) >= 2, "Resize takes at least two inputs"
     outputs = graph.resize(inputs[0], inputs[1])
     return outputs
+
 
 # TensorFlow resize_nearest_neighbor
 # https://www.tensorflow.org/api_docs/cc/class/tensorflow/ops/resize-nearest-neighbor
@@ -491,6 +536,7 @@ def _resize_nearest_neighbor(op, graph, tensors, initializer):
     outputs = graph.resize_nearest_neighbor(input=inputs[0], new_height=shape[0], new_width=shape[1])
     return outputs
 
+
 # TensorFlow crop_and_resize
 # https://www.tensorflow.org/api_docs/cc/class/tensorflow/ops/crop-and-resize
 def _crop_and_resize(op, graph, tensors, initializer):
@@ -499,12 +545,14 @@ def _crop_and_resize(op, graph, tensors, initializer):
     outputs = graph.crop_and_resize(inputs[0], inputs[1], inputs[2], inputs[3])
     return outputs
 
+
 def _relu(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "Relu requires exactly one input"
     attrs = _parse_attribute(op.attribute)
     outputs = graph.relu(input=inputs[0])
     return outputs
+
 
 def _round(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -513,12 +561,14 @@ def _round(op, graph, tensors, initializer):
     outputs = graph.round(inputs[0])
     return outputs
 
+
 def _shape(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
-    assert len(inputs)== 1, "Shape requires exactly one input"
+    assert len(inputs) == 1, "Shape requires exactly one input"
     attrs = _parse_attribute(op.attribute)
     outputs = graph.shape(inputs[0])
     return outputs
+
 
 def _sigmoid(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -527,12 +577,14 @@ def _sigmoid(op, graph, tensors, initializer):
     outputs = graph.sigmoid(input=inputs[0])
     return outputs
 
+
 def _size(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "Size requires exactly one input"
     attrs = _parse_attribute(op.attribute)
     outputs = graph.size(inputs[0])
     return outputs
+
 
 def _slice(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -557,6 +609,7 @@ def _slice(op, graph, tensors, initializer):
     outputs = graph.slice(inputs[0], start, end, axes, steps)
     return outputs
 
+
 def _split(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "Split requires exactly one input"
@@ -574,22 +627,24 @@ def _split(op, graph, tensors, initializer):
         outputs = graph.split(inputs[0], axis, split_list)
     return outputs
 
+
 def _sqrt(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "Sqrt requires exactly one input"
-    #input_tensor = None
-    #if op.input[0] in tensors:
+    # input_tensor = None
+    # if op.input[0] in tensors:
     #    input_tensor = tensors[op.input[0]]
-    #else:
+    # else:
     #    for init in initializer:
     #        if init.name == op.input[0]:
     #            input_tensor = graph.new_weight(
     #                dims=tuple(list(init.dims)), data=numpy_helper.to_array(init))
     #            break
-    #assert input_tensor is not None, "Input Tensor Not Found"
+    # assert input_tensor is not None, "Input Tensor Not Found"
     attrs = _parse_attribute(op.attribute)
     outputs = graph.sqrt(input=inputs[0])
     return outputs
+
 
 def _squeeze(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -601,6 +656,7 @@ def _squeeze(op, graph, tensors, initializer):
         axes.append(i)
     outputs = graph.squeeze(input=inputs[0], axes=tuple(axes))
     return outputs
+
 
 def _strided_slice(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -621,17 +677,20 @@ def _strided_slice(op, graph, tensors, initializer):
     outputs = graph.slice(inputs[0], None, None, None, None)
     return outputs
 
+
 def _sub(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 2, "Sub takes exactly two inputs"
     outputs = graph.sub(x=inputs[0], y=inputs[1])
     return outputs
 
+
 def _sum(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 2, "TASO assumes Sum takes exactly two inputs. Submit a github issue when you see this."
     outputs = graph.add(inputs[0], inputs[1])
     return outputs
+
 
 def _transpose(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
@@ -644,19 +703,20 @@ def _transpose(op, graph, tensors, initializer):
     outputs = graph.transpose(inputs[0], tuple(perm), shuffle=True)
     return outputs
 
+
 def _unsqueeze(op, graph, tensors, initializer):
     inputs = _get_inputs(op, graph, tensors, initializer)
     assert len(inputs) == 1, "Unsqueeze takes exactly one input"
-    #input_tensor = None
-    #if op.input[0] in tensors:
+    # input_tensor = None
+    # if op.input[0] in tensors:
     #    input_tensor = tensors[op.input[0]]
-    #else:
+    # else:
     #    for init in initializer:
     #        if init.name == op.input[0]:
     #            input_tensor = graph.new_weight(
     #                dims=tuple(list(init.dims)), data=numpy_helper.to_array(init))
     #            break
-    #assert input_tensor is not None, "Input Tensor Not Found"
+    # assert input_tensor is not None, "Input Tensor Not Found"
     attrs = _parse_attribute(op.attribute)
     axes_ints = attrs["axes"]
     axes = list()
@@ -664,6 +724,7 @@ def _unsqueeze(op, graph, tensors, initializer):
         axes.append(i)
     outputs = graph.unsqueeze(input=inputs[0], axes=tuple(axes))
     return outputs
+
 
 # Add all supported operators
 xf_operators = dict()
@@ -717,11 +778,13 @@ xf_operators['Sum'] = _sum
 xf_operators['Transpose'] = _transpose
 xf_operators['Unsqueeze'] = _unsqueeze
 
-def new_graph(print_measurements = False):
+
+def new_graph(print_measurements=False):
     graph = core.PyGraph()
     if print_measurements:
         graph.print_measurements()
     return graph
+
 
 def load_onnx(filename):
     '''
@@ -798,7 +861,7 @@ def load_onnx(filename):
     cnt = 0
     for opname in node_list:
         op = name_to_op[opname]
-        #print(cnt, op.op_type, opname)
+        # print(cnt, op.op_type, opname)
         cnt += 1
         if op.op_type in xf_operators:
             try:
@@ -817,6 +880,7 @@ def load_onnx(filename):
             continue
     return graph
 
+
 input_weight_names = dict()
 input_weight_names['Add'] = ['input1', 'input2']
 input_weight_names['AveragePool'] = ['input']
@@ -834,7 +898,7 @@ operator_attrs['Add'] = []
 operator_attrs['ArgMax'] = []
 operator_attrs['ArgMin'] = []
 operator_attrs['AveragePool'] = ['kernel_shape', 'pads', 'strides']
-operator_attrs['BatchNormalization'] = ['epsilon'] # TODO: Add momentum
+operator_attrs['BatchNormalization'] = ['epsilon']  # TODO: Add momentum
 operator_attrs['Cast'] = []
 operator_attrs['Ceil'] = []
 operator_attrs['Concat'] = ['axis']
@@ -863,6 +927,7 @@ operator_attrs['Transpose'] = ['perm']
 operator_attrs['Unsqueeze'] = ['axes']
 operator_attrs['BroadcastAdd'] = []
 
+
 def _input_tensor_name(graph, inedge, op):
     intype = graph.get_operator_type(inedge['srcOp'])
     if intype == "Input":
@@ -873,15 +938,18 @@ def _input_tensor_name(graph, inedge, op):
     else:
         return _output_tensor_name(graph, inedge['srcOp'], inedge['srcIdx'])
 
+
 def _output_tensor_name(graph, op, idx):
     type = graph.get_operator_type(op)
     return "{}{}_fwd{}".format(type, op['guid'], idx)
+
 
 def _add_node_attribute(graph, node, op, optype):
     for key in operator_attrs[optype]:
         val = graph.get_operator_attr(op, key)
         attr = helper.make_attribute(key, val)
         node.attribute.append(attr)
+
 
 def export_onnx(graph):
     '''
@@ -901,7 +969,7 @@ def export_onnx(graph):
     for op in opList:
         mytype = graph.get_operator_type(op)
         inedges = graph.get_input_edges(op)
-        #print("op.guid={} mytype={} inedges={}".format(op['guid'], mytype, len(inedges)))
+        # print("op.guid={} mytype={} inedges={}".format(op['guid'], mytype, len(inedges)))
         inputs = list()
         for e in inedges:
             intype = graph.get_operator_type(e['srcOp'])
@@ -909,18 +977,21 @@ def export_onnx(graph):
             output_guids.pop((e['srcOp']['guid'], e['srcIdx']), None)
             if intype == 'Input' or intype == 'Weight':
                 graph_inputs.append(helper.make_tensor_value_info(_input_tensor_name(graph, e, op),
-                                    TensorProto.FLOAT, graph.get_input_dims(op, e['dstIdx'])))
+                                                                  TensorProto.FLOAT,
+                                                                  graph.get_input_dims(op, e['dstIdx'])))
             if intype == 'Weight':
                 graph_initializers.append(helper.make_tensor(_input_tensor_name(graph, e, op),
-                                          TensorProto.FLOAT, graph.get_input_dims(op, e['dstIdx']),
-                                          graph.get_weight_value(e['srcOp'])))
+                                                             TensorProto.FLOAT, graph.get_input_dims(op, e['dstIdx']),
+                                                             graph.get_weight_value(e['srcOp'])))
 
         # add a second input for Reshape
         if mytype == 'Reshape':
             inputs.append('Reshape_attr{}'.format(op['guid']))
             shape = graph.get_output_dims(op, 0)
-            graph_inputs.append(helper.make_tensor_value_info('Reshape_attr{}'.format(op['guid']), TensorProto.INT64, [len(shape)]))
-            graph_initializers.append(helper.make_tensor('Reshape_attr{}'.format(op['guid']), TensorProto.INT64, [len(shape)], shape))
+            graph_inputs.append(
+                helper.make_tensor_value_info('Reshape_attr{}'.format(op['guid']), TensorProto.INT64, [len(shape)]))
+            graph_initializers.append(
+                helper.make_tensor('Reshape_attr{}'.format(op['guid']), TensorProto.INT64, [len(shape)], shape))
         outputs = list()
         for i in range(graph.get_num_outputs(op)):
             outputs.append(_output_tensor_name(graph, op, i))
@@ -931,13 +1002,15 @@ def export_onnx(graph):
     for guid, idx in output_guids:
         op = output_guids[(guid, idx)]
         graph_outputs.append(helper.make_tensor_value_info(_output_tensor_name(graph, op, idx),
-                             TensorProto.FLOAT, graph.get_output_dims(op, idx)))
+                                                           TensorProto.FLOAT, graph.get_output_dims(op, idx)))
     onnx_graph = helper.make_graph(graph_nodes, 'main', graph_inputs, graph_outputs, graph_initializers)
     onnx_model = helper.make_model(onnx_graph, producer_name='TASO Optimized Model')
     return onnx_model
 
-def optimize(graph, alpha = 1.0, budget = 1000, print_subst = False):
+
+def optimize(graph, alpha=1.0, budget=1000, print_subst=False):
     return graph.optimize(alpha, budget, print_subst)
+
 
 # Current TASO Version
 __version__ = "0.1.0"
