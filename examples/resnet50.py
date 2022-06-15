@@ -1,4 +1,4 @@
-import python.taso as ts
+import taso as ts
 import onnx
 
 
