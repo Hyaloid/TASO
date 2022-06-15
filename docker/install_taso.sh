@@ -19,7 +19,7 @@ set -u
 set -o pipefail
 
 cd /usr
-git clone --recursive https://github.com/jiazhihao/TASO.git
+git clone --recursive https://github.com/Hyaloid/TASO.git
 cd /usr/TASO
 mkdir -p build
 cd build
