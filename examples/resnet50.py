@@ -40,6 +40,10 @@ for i in range(3):
     t = resnet_block(graph, t, strides, 512)
     strides = (1, 1)
 
+# origin graph model
+onnx_model_origin = ts.export_onnx(graph)
+onnx.save_model(onnx_model_origin, "../onnx_graph/resnet_ori.onnx")
+
 new_graph = ts.optimize(graph, alpha=1.0, budget=1000)
 onnx_model = ts.export_onnx(new_graph)
-onnx.save_model(onnx_model, "../figures/resnet.onnx")
+onnx.save_model(onnx_model, "../onnx_graph/resnet.onnx")

@@ -1,4 +1,6 @@
 import argparse
+import taso as ts
+import onnx
 import tensorflow as tf
 import numpy as np
 import time
@@ -59,6 +61,8 @@ input_dictionary[input] = np.random.random_sample((1, 64, 56, 56))
 with tf.compat.v1.Session(config=config) as sess:
     if (args.print_tensorboard):
         writer = tf.compat.v1.summary.FileWriter(args.print_tensorboard, sess.graph)
+    onnx_model = ts.export_onnx(sess.graph)
+    onnx.save_model(onnx_model, "../onnx_graph/resnet_tf.onnx")
     times = []
     for i in range(args.discard_iter + args.iterations):
         t0 = time.time()
