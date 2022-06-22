@@ -3,3 +3,4 @@ venv/
 .DS_Store
 .pyre/
 __pycache__/
+tensorflow_py/PRINT_TENSORBOARD/
